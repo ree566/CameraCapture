@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.Camera_Start_button = new System.Windows.Forms.Button();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
@@ -43,12 +44,13 @@
             this.button1 = new System.Windows.Forms.Button();
             this.label6 = new System.Windows.Forms.Label();
             this.sn_textBox = new System.Windows.Forms.TextBox();
-            this.textBox3 = new System.Windows.Forms.TextBox();
+            this.LogInfo = new System.Windows.Forms.TextBox();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
             this.videoSourcePlayer2 = new AForge.Controls.VideoSourcePlayer();
             this.label5 = new System.Windows.Forms.Label();
             this.pictureBox2 = new System.Windows.Forms.PictureBox();
             this.label7 = new System.Windows.Forms.Label();
+            this.timer1 = new System.Windows.Forms.Timer(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -203,24 +205,23 @@
             this.sn_textBox.CharacterCasing = System.Windows.Forms.CharacterCasing.Upper;
             this.sn_textBox.Location = new System.Drawing.Point(64, 32);
             this.sn_textBox.MaxLength = 50;
-            this.sn_textBox.Multiline = true;
             this.sn_textBox.Name = "sn_textBox";
-            this.sn_textBox.Size = new System.Drawing.Size(206, 31);
+            this.sn_textBox.Size = new System.Drawing.Size(206, 33);
             this.sn_textBox.TabIndex = 14;
             this.sn_textBox.Text = "123";
             this.sn_textBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.textBox2_KeyDown);
             // 
-            // textBox3
+            // LogInfo
             // 
-            this.textBox3.Location = new System.Drawing.Point(6, 26);
-            this.textBox3.Multiline = true;
-            this.textBox3.Name = "textBox3";
-            this.textBox3.Size = new System.Drawing.Size(264, 134);
-            this.textBox3.TabIndex = 13;
+            this.LogInfo.Location = new System.Drawing.Point(6, 26);
+            this.LogInfo.Multiline = true;
+            this.LogInfo.Name = "LogInfo";
+            this.LogInfo.Size = new System.Drawing.Size(264, 134);
+            this.LogInfo.TabIndex = 13;
             // 
             // groupBox3
             // 
-            this.groupBox3.Controls.Add(this.textBox3);
+            this.groupBox3.Controls.Add(this.LogInfo);
             this.groupBox3.Font = new System.Drawing.Font("Calibri", 15.75F, System.Drawing.FontStyle.Bold);
             this.groupBox3.Location = new System.Drawing.Point(12, 381);
             this.groupBox3.Name = "groupBox3";
@@ -270,6 +271,10 @@
             this.label7.Size = new System.Drawing.Size(155, 26);
             this.label7.TabIndex = 21;
             this.label7.Text = "Image Capture 2";
+            // 
+            // timer1
+            // 
+            this.timer1.Tick += new System.EventHandler(this._TimersTimer_Elapsed);
             // 
             // Form1
             // 
@@ -322,13 +327,14 @@
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.TextBox sn_textBox;
-        private System.Windows.Forms.TextBox textBox3;
+        private System.Windows.Forms.TextBox LogInfo;
         private System.Windows.Forms.GroupBox groupBox3;
         private AForge.Controls.VideoSourcePlayer videoSourcePlayer2;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.PictureBox pictureBox2;
         private System.Windows.Forms.Label label7;
         private System.Windows.Forms.ListBox listBox1;
+        private System.Windows.Forms.Timer timer1;
     }
 }
 

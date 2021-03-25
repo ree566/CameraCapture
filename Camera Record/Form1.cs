@@ -18,6 +18,7 @@ using System.IO.Ports;
 using System.Globalization;
 using System.Net;
 using AForge.Controls;
+using System.Timers;
 
 namespace Camera_Record
 {
@@ -44,7 +45,9 @@ namespace Camera_Record
         string OPID = string.Empty;
         string SN = string.Empty;
 
-        private readonly int SETTING_DEVICES_CNT = 2;
+        private readonly int MININUM_DEVICES_CNT = 2;
+        private int cameraProcessTime = 0;
+        private int maxCameraProcessTime = 3 * 60; //Close camera when opening after 3 hours
 
         public Form1()
         {
@@ -60,10 +63,21 @@ namespace Camera_Record
             set { _usbcamera = value; }
         }
 
+        private void StartTimer()
+        {
+            // Call this procedure when the application starts.
+            // Set to 1 second.
+            timer1.Interval = 1000;
+
+            // Enable timer.
+            this.timer1.Start();
+        }
+
         private void button1_Click(object sender, EventArgs e)
         {
             OpenCamera();
             Enabled_Mode();
+            StartTimer();
         }
 
         #region Open Scan Camera
@@ -74,7 +88,7 @@ namespace Camera_Record
                 usbcamera = listBox1.SelectedIndex.ToString();
                 videoDevices = new FilterInfoCollection(FilterCategory.VideoInputDevice);
 
-                if (videoDevices.Count == SETTING_DEVICES_CNT)
+                if (videoDevices.Count == MININUM_DEVICES_CNT)
                 {
                     int loopCnt = 1;
                     // add all devices to combo
@@ -144,23 +158,19 @@ namespace Camera_Record
                 pictureBox.Image = image;
                 pictureBox.Update();
 
-
                 string nameCapture = sn_textBox.Text + "_" + "camera" + index + "_" +
                     DateTime.Now.ToString("yyyyMMddHHmmss") + ".bmp";
 
-                if (Directory.Exists(pathFolder))
-                {
-                    pictureBox.Image.Save(pathFolder + nameCapture, ImageFormat.Bmp);
-                }
-                else
+                if (!Directory.Exists(pathFolder))
                 {
                     Directory.CreateDirectory(pathFolder);
-                    pictureBox.Image.Save(pathFolder + nameCapture, ImageFormat.Bmp);
                 }
-
+                pictureBox.Image.Save(pathFolder + nameCapture, ImageFormat.Bmp);
             }
 
-            catch { }
+            catch (Exception ex){
+                LogInfo.Text = "Please wait for camera ready.";
+            }
         }
 
         public void OpenVideoSource(IVideoSource source, int index)
@@ -212,7 +222,11 @@ namespace Camera_Record
 
             listBox1.SelectedIndex = 0;
 
-            pictureBox1.SizeMode = PictureBoxSizeMode.StretchImage;
+            for (var i = 1; i <= MININUM_DEVICES_CNT; i++)
+            {
+                System.Windows.Forms.PictureBox pictureBox = (System.Windows.Forms.PictureBox)this.Controls["pictureBox" + i];
+                pictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
+            }
         }
 
         public void CloseCurrentVideoSource(VideoSourcePlayer player)
@@ -260,7 +274,17 @@ namespace Camera_Record
 
         private void button2_Click(object sender, EventArgs e)
         {
-            needSnapshot = true;
+            //needSnapshot = true;
+
+            captureImg(sender, e);
+        }
+
+        private void captureImg(object sender, EventArgs e)
+        {
+            foreach (var v in opened_videoPlayers.Select((player, index) => new { player, index }))
+            {
+                this.Invoke(new CaptureSnapshotManifast(UpdateCaptureSnapshotManifast), v.player.GetCurrentVideoFrame(), v.index + 1);
+            }
         }
 
         private void videoSourcePlayer1_NewFrame_1(object sender, ref Bitmap image)
@@ -274,13 +298,14 @@ namespace Camera_Record
                 SolidBrush brush = new SolidBrush(Color.Red);
                 g.DrawString(now.ToString(), this.Font, brush, new PointF(5, 5));
                 brush.Dispose();
-                if (needSnapshot)
-                {
-                    foreach (var New in opened_videoDevices.Select((value, index) => new { value, index }))
-                    {
-                        this.Invoke(new CaptureSnapshotManifast(UpdateCaptureSnapshotManifast), image, New.index + 1);
-                    }
-                }
+                //if (needSnapshot)
+                //{
+                //    System.Diagnostics.Debug.WriteLine((sender as VideoSourcePlayer)?.Name);
+                //    System.Diagnostics.Debug.WriteLine(image.GetHashCode());
+
+                //    this.Invoke(new CaptureSnapshotManifast(UpdateCaptureSnapshotManifast), image, (sender as VideoSourcePlayer)?.Name);
+
+                //}
                 g.Dispose();
             }
             catch
@@ -299,6 +324,7 @@ namespace Camera_Record
 
         private void Enabled_Mode()
         {
+            sn_textBox.Enabled = true;
             Camera_Start_button.Enabled = false;
             Camera_Stop_button.Enabled = true;
             Camera_ScreenShot_button.Enabled = true;
@@ -307,24 +333,11 @@ namespace Camera_Record
 
         private void Disabled_Mode()
         {
+            sn_textBox.Enabled = false;
             Camera_Start_button.Enabled = true;
             Camera_Stop_button.Enabled = false;
             Camera_ScreenShot_button.Enabled = false;
             listBox1.Enabled = false;
-        }
-
-        public void Po_KeyUp(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter)
-            {
-                //Do something
-                e.Handled = true;
-
-                needSnapshot = true;
-
-                System.Diagnostics.Debug.WriteLine("Triggering");
-
-            }
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -332,8 +345,17 @@ namespace Camera_Record
             Loadini();
             try
             {
+                Disabled_Mode();
+
+                Cursor.Current = Cursors.WaitCursor;
+                getListCameraUSB();
                 OpenCamera();
+                StartTimer();
+                Cursor.Current = Cursors.Default;
+
                 Enabled_Mode();
+                
+
             }
             catch
             { }
@@ -352,7 +374,21 @@ namespace Camera_Record
         {
             if (e.KeyCode == Keys.Enter)
             {
+                sn_textBox.Enabled = false;
+                captureImg(sender, e);
+                sn_textBox.Enabled = true;
+                sn_textBox.Text = "";
+                sn_textBox.Focus();
+            }
+        }
 
+        private void _TimersTimer_Elapsed(object sender, EventArgs e)
+        {
+            if (cameraProcessTime++ > maxCameraProcessTime)
+            {
+                this.CloseCurrentVideoSource();
+                cameraProcessTime = 0;
+                this.timer1.Stop();
             }
         }
     }
