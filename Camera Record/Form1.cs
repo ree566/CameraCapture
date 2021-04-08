@@ -74,7 +74,7 @@ namespace Camera_Record
         {
             InitializeComponent();
             //getListCameraUSB();
-            Disabled_Mode();
+            //Disabled_Mode();
             Camera_ScreenShot_button.Visible = false;
         }
 
