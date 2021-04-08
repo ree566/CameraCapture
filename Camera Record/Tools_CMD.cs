@@ -56,7 +56,7 @@ namespace Camera_Record
             FtpWebResponse uploadResponse = null;
             try
             {
-                FtpWebRequest uploadRequest = (FtpWebRequest)WebRequest.Create(uploadUrl + fileName); 
+                FtpWebRequest uploadRequest = (FtpWebRequest)WebRequest.Create(uploadUrl + fileName);
                 uploadRequest.Method = WebRequestMethods.Ftp.UploadFile;//設定Method上傳檔案
                 uploadRequest.Proxy = null;
                 if (UserName.Length > 0)//如果需要帳號登入
@@ -146,11 +146,11 @@ namespace Camera_Record
             ftpRequest.Method = WebRequestMethods.Ftp.DownloadFile;
             try
             {
-               //FtpWebResponse
-               FtpWebResponse ftpResponse = (FtpWebResponse)ftpRequest.GetResponse();
-               //Get Stream From FtpWebResponse
-               Stream ftpStream = ftpResponse.GetResponseStream();
-            
+                //FtpWebResponse
+                FtpWebResponse ftpResponse = (FtpWebResponse)ftpRequest.GetResponse();
+                //Get Stream From FtpWebResponse
+                Stream ftpStream = ftpResponse.GetResponseStream();
+
                 using (FileStream fileStream = new FileStream(AppDomain.CurrentDomain.BaseDirectory + "\\FTPDownload\\" + fileName, FileMode.Create))
                 {
                     int bufferSize = 2048;
@@ -173,29 +173,27 @@ namespace Camera_Record
                 return false;
             }
             Thread.Sleep(2000);
-            return true;       
+            return true;
         }
         #endregion
         #region FTP log Upload
         internal bool ftpupload(string fileName, string strLogFilePath, string uploadUrl, string UserName, string Password)
         {
-           try
-                {
-                    // Get the object used to communicate with the server.
-                    FtpWebRequest request = (FtpWebRequest)WebRequest.Create(uploadUrl + fileName);
-                    request.Method = WebRequestMethods.Ftp.UploadFile;
-
-                    // This example assumes the FTP site uses anonymous logon.
-                    request.Credentials = new NetworkCredential(UserName, Password);
-
-                    // Copy the contents of the file to the request stream.
-                    byte[] fileContents;
+            try
+            {
+                // Get the object used to communicate with the server.
+                FtpWebRequest request = (FtpWebRequest)WebRequest.Create(uploadUrl + fileName);
+                request.Method = WebRequestMethods.Ftp.UploadFile;
+                // This example assumes the FTP site uses anonymous logon.
+                request.Credentials = new NetworkCredential(UserName, Password);
+                // Copy the contents of the file to the request stream.
+                byte[] fileContents;
                 using (StreamReader sourceStream = new StreamReader(strLogFilePath))
                 {
                     fileContents = Encoding.UTF8.GetBytes(sourceStream.ReadToEnd());
                 }
 
-                    request.ContentLength = fileContents.Length;
+                request.ContentLength = fileContents.Length;
 
                 using (Stream requestStream = request.GetRequestStream())
                 {
@@ -205,14 +203,14 @@ namespace Camera_Record
                 using (FtpWebResponse response = (FtpWebResponse)request.GetResponse())
                 {
                     return true;
-                }                 
                 }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.Message);
-                    return false;
-                }
-            
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+                return false;
+            }
+
         }
         #endregion
         #region FTP log Download      
@@ -256,5 +254,57 @@ namespace Camera_Record
             return true;
         }
         #endregion
+
+        public static bool UploadFile(string updatefilename, string file_Path, string IP, string user, string password, ProgressBar Bar1)
+        {
+            bool result = true;
+            try
+            {
+                FileInfo finfo = new FileInfo(file_Path);
+                updatefilename = Path.GetFileNameWithoutExtension(file_Path) + Path.GetExtension(file_Path);
+                FtpWebRequest request = (FtpWebRequest)WebRequest.Create(IP + "/" + updatefilename);
+                request.Method = WebRequestMethods.Ftp.UploadFile;
+                request.UsePassive = false;
+                request.UseBinary = true;
+                request.Credentials = new NetworkCredential(user, password);
+                Stream requestStream = request.GetRequestStream();
+                FileStream myFileStream = new FileStream(file_Path, FileMode.Open, FileAccess.Read);
+                Byte[] uploadBytes = new byte[myFileStream.Length];
+                int contentLen = 0;
+                contentLen = myFileStream.Read(uploadBytes, 0, uploadBytes.Length);
+                myFileStream.Close();
+                requestStream.Write(uploadBytes, 0, uploadBytes.Length);
+                StreamReader sourceStream = new StreamReader(file_Path, Encoding.GetEncoding(950));
+                byte[] fileContents = Encoding.Default.GetBytes(sourceStream.ReadLine());
+                sourceStream.Close();
+                int buffLength = 2048;
+                byte[] buffer = new byte[buffLength];
+                FileStream fs = File.OpenRead(file_Path);
+                contentLen = fs.Read(buffer, 0, buffer.Length);
+                int allbye = (int)finfo.Length;
+                Bar1.Maximum = allbye;//設定進度條長度
+                int startbye = 0;
+                while (contentLen != 0)
+                {
+                    startbye = contentLen + startbye;
+                    requestStream.Write(buffer, 0, contentLen);
+                    //更新進度
+                    if (Bar1 != null)
+                    {
+                        Bar1.Value += contentLen;//更新進度條
+                    }
+                    contentLen = fs.Read(buffer, 0, buffLength);
+                }
+                fs.Close();
+                requestStream.Close();
+            }
+            catch (Exception eee)
+            {
+                MessageBox.Show(eee.ToString());
+                result = false;
+            }
+
+            return result;
+        }
     }
 }
