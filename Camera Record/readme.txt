@@ -1,1 +1,1 @@
-﻿This is a message for git test.
+﻿This is a message for git test. TEST1
