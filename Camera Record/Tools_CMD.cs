@@ -20,6 +20,11 @@ namespace Camera_Record
         private static extern long WritePrivateProfileString(string section, string key, string val, string filePath);
         [DllImport("kernel32", CharSet = CharSet.Unicode)]
         private static extern int GetPrivateProfileString(string section, string key, string def, StringBuilder retVal, int size, string filePath);
+        [DllImport("user32.dll")]
+        public static extern bool ReleaseCapture();
+        [DllImport("user32.dll")]
+        public static extern bool SendMessage(IntPtr hwnd, int wMsg, int wParam, int lParam);
+
         #region Configini
         public static void IniWriteValue(string Section, string Key, string Value, string inipath)
         {
