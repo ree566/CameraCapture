@@ -392,7 +392,6 @@ namespace Camera_Record
             catch { }
         }
 
-
         public void CloseCurrentVideoSource()
         {
             SizeList.Items.Clear();
@@ -599,9 +598,9 @@ namespace Camera_Record
                     //pictureBox1.Image = null;
                 }
             }
-            catch (Exception eee)
+            catch (Exception ex)
             {
-                LogInfo.Text += (eee.ToString());
+                LogInfo.Text += (ex.ToString());
             }
         }
 

@@ -184,15 +184,15 @@ namespace Camera_Record
         #region FTP log Upload
         internal bool ftpupload(string fileName, string strLogFilePath, string uploadUrl, string UserName, string Password)
         {
-           try
-                {
-                    // Get the object used to communicate with the server.
-                    FtpWebRequest request = (FtpWebRequest)WebRequest.Create(uploadUrl + fileName);
-                    request.Method = WebRequestMethods.Ftp.UploadFile;
-                    // This example assumes the FTP site uses anonymous logon.
-                    request.Credentials = new NetworkCredential(UserName, Password);
-                    // Copy the contents of the file to the request stream.
-                    byte[] fileContents;
+            try
+            {
+                // Get the object used to communicate with the server.
+                FtpWebRequest request = (FtpWebRequest)WebRequest.Create(uploadUrl + fileName);
+                request.Method = WebRequestMethods.Ftp.UploadFile;
+                // This example assumes the FTP site uses anonymous logon.
+                request.Credentials = new NetworkCredential(UserName, Password);
+                // Copy the contents of the file to the request stream.
+                byte[] fileContents;
                 using (StreamReader sourceStream = new StreamReader(strLogFilePath))
                 {
                     fileContents = Encoding.UTF8.GetBytes(sourceStream.ReadToEnd());
@@ -260,14 +260,14 @@ namespace Camera_Record
         }
         #endregion
 
-        public static bool UploadFile(string updatefilename, string file_Path, string IP,string user , string password , ProgressBar Bar1)
+        public static bool UploadFile(string updatefilename, string file_Path, string IP, string user, string password, ProgressBar Bar1)
         {
             bool result = true;
             try
             {
                 FileInfo finfo = new FileInfo(file_Path);
                 updatefilename = Path.GetFileNameWithoutExtension(file_Path) + Path.GetExtension(file_Path);
-                FtpWebRequest request = (FtpWebRequest)WebRequest.Create( IP + "/" + updatefilename);
+                FtpWebRequest request = (FtpWebRequest)WebRequest.Create(IP + "/" + updatefilename);
                 request.Method = WebRequestMethods.Ftp.UploadFile;
                 request.UsePassive = false;
                 request.UseBinary = true;
