@@ -44,6 +44,9 @@ namespace Camera_Record
         private int cameraProcessTime = 0;
         private int maxCameraProcessTime = 3 * 60; //Close camera when opening after 3 hours
 
+        private const int VM_NCLBUTTONDOWN = 0XA1;
+        private const int HTCAPTION = 2;
+
         private int snMinTextLengh = 8;
         public string usbcamera
         {
@@ -63,6 +66,7 @@ namespace Camera_Record
         int imageWidth;
 
         Tools_CMD tools_CMD = new Tools_CMD();
+
 
         //private static object _thisLock = new object();
 
@@ -190,10 +194,6 @@ namespace Camera_Record
                 {
                     throw new Exception("No camera devices found");
                 }
-                //videoDevice.SetCameraProperty(
-                //    CameraControlProperty.Zoom,
-                //    1,
-                //    CameraControlFlags.Manual);
 
             }
             catch (Exception err)
@@ -236,6 +236,11 @@ namespace Camera_Record
             v.VideoResolution = SelectResolution(v);
             SizeList.Text = imageWidth + "x" + imageHeight;
             LogInfo.Text += "Open camera " + device.Name + "\r\n";
+
+            //v.SetVideoProperty(VideoProcAmpProperty.Brightness,brightnessValue,VideoProcAmpFlags.Manual);
+            //v.SetCameraProperty(CameraControlProperty., zoomValue, CameraControlFlags.Manual);
+            //v.SetCameraProperty(CameraControlProperty.Zoom, zoomValue, CameraControlFlags.Manual);
+
             OpenVideoSource(v, index);
         }
 
@@ -255,6 +260,7 @@ namespace Camera_Record
         #region Capture snapshot
         //Delegate Untuk Capture, insert database, update ke grid 
         public delegate void CaptureSnapshotManifast(Bitmap image, int index);
+
         public void UpdateCaptureSnapshotManifast(Bitmap image, int index)
         {
             string SSN = string.Empty;
@@ -278,13 +284,13 @@ namespace Camera_Record
                 pictureBox.Update();
 
                 nameCapture = sn_textBox.Text + "_" + SSN + "_" +
-                    DateTime.Now.ToString("yyyyMMddHHmmss") + ".bmp";
+                    DateTime.Now.ToString("yyyyMMddHHmmss") + ".jpeg";
 
                 if (!Directory.Exists(pathFolder))
                 {
                     Directory.CreateDirectory(pathFolder);
                 }
-                pictureBox.Image.Save(pathFolder + nameCapture, ImageFormat.Bmp);
+                pictureBox.Image.Save(pathFolder + nameCapture, ImageFormat.Jpeg);
                 this.Image_upload.Dispose();
                 this.Image_upload.WorkerSupportsCancellation = true;
                 this.progressBar1.Value = 0;
@@ -327,7 +333,6 @@ namespace Camera_Record
         #endregion
 
         #region VideoSource relate(open & close)
-
         public void OpenVideoSource(IVideoSource source, int index)
         {
             try
@@ -356,6 +361,7 @@ namespace Camera_Record
                 MessageBox.Show(ex.Message);
             }
         }
+
         public void CloseCurrentVideoSource(VideoSourcePlayer player)
         {
             try
@@ -389,6 +395,7 @@ namespace Camera_Record
 
         public void CloseCurrentVideoSource()
         {
+            SizeList.Items.Clear();
             Disabled_Mode();
             Thread.Sleep(500);
             opened_videoPlayers.ForEach(player =>
@@ -468,6 +475,7 @@ namespace Camera_Record
         private void button4_Click(object sender, EventArgs e)
         {
             CloseCurrentVideoSource();
+
             Thread.Sleep(1000);
         }
 
@@ -510,7 +518,7 @@ namespace Camera_Record
             string[] _relist = SizeList.SelectedItem.ToString().Split('x');
             imageHeight = Convert.ToInt16(_relist[1]);
             imageWidth = Convert.ToInt16(_relist[0]);
-            SizeList.Items.Clear();
+            CloseCurrentVideoSource();
             button1_Click(sender, e);
         }
 
@@ -518,6 +526,30 @@ namespace Camera_Record
         {
             pictureBox1.Image = null;
             pictureBox1.Update();
+        }
+
+        private void setting_button_Click(object sender, EventArgs e)
+        {
+            if (this.opened_videoDevices.Count != 0 && this.DEVICES_CNT == 1)
+            {
+                opened_videoDevices[0].DisplayPropertyPage(IntPtr.Zero); //这将显示带有摄像头控件的窗体
+            }
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            this.WindowState = FormWindowState.Minimized;
+        }
+
+        private void button1_Click_2(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+        private void panel2_MouseDown(object sender, MouseEventArgs e)
+        {
+            Tools_CMD.ReleaseCapture();
+            Tools_CMD.SendMessage((IntPtr)this.Handle, VM_NCLBUTTONDOWN, HTCAPTION, 0);
         }
 
         #endregion
@@ -573,7 +605,9 @@ namespace Camera_Record
             }
         }
 
+
         #endregion
+
 
     }
 }
