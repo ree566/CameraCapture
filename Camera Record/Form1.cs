@@ -31,7 +31,7 @@ namespace Camera_Record
         private List<VideoCaptureDevice> opened_videoDevices = new List<VideoCaptureDevice>();
         private List<VideoSourcePlayer> opened_videoPlayers = new List<VideoSourcePlayer>();
         private ArrayList listCamera = new ArrayList();
-        public string pathFolder = Application.StartupPath + @"\ImageCapture\";
+        private string pathFolder = Application.StartupPath + @"\ImageCapture\";
 
         private Stopwatch stopWatch = null;
         //private static bool needSnapshot = false;
@@ -41,32 +41,37 @@ namespace Camera_Record
 
         private readonly int DEVICES_CNT = 1;
 
+        //Camera auto close settting
         private int cameraProcessTime = 0;
-        private int maxCameraProcessTime = 3 * 60; //Close camera when opening after 3 hours
+        private readonly int maxCameraProcessTime = 3 * 60; //Close camera when opening after 3 hours
 
         private const int VM_NCLBUTTONDOWN = 0XA1;
         private const int HTCAPTION = 2;
 
-        private int snMinTextLengh = 8;
-        public string usbcamera
+        //Sn rule setting
+        private readonly int snMinTextLengh = 8;
+        private Regex regex = new Regex(@"^[a-zA-Z0-9_+-]+$");
+
+        private string usbcamera
         {
             get { return _usbcamera; }
             set { _usbcamera = value; }
         }
 
-        string iniPath = @"Config.ini";
-        string ftpIp = string.Empty;
-        string ftpPort = string.Empty;
-        string ftpAccount = string.Empty;
-        string ftpPsw = string.Empty;
+        private string iniPath = @"Config.ini";
+        private string ftpIp = string.Empty;
+        private string ftpPort = string.Empty;
+        private string ftpAccount = string.Empty;
+        private string ftpPsw = string.Empty;
 
-        string nameCapture = string.Empty;
+        private string nameCapture = string.Empty;
 
-        int imageHeight;
-        int imageWidth;
+        private int? imageHeight;
+        private int? imageWidth;
 
-        Tools_CMD tools_CMD = new Tools_CMD();
+        private Tools_CMD tools_CMD = new Tools_CMD();
 
+        private int? focusValue;
 
         //private static object _thisLock = new object();
 
@@ -77,40 +82,19 @@ namespace Camera_Record
         public Form1()
         {
             InitializeComponent();
-            //getListCameraUSB();
-            //Disabled_Mode();
-            Camera_ScreenShot_button.Visible = false;
+
+            //Show project version
+            var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            versionInfo.Text = String.Format("Application Version {0}", version);
+
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
             Loadini();
-            try
-            {
-                Disabled_Mode();
-                Cursor.Current = Cursors.WaitCursor;
-                GetListCameraUSB();
-
-                //lock (_thisLock)
-                //{
-                //}
-
-                //try
-                //{
-                //    OpenCamera();
-                //    StartTimer();
-                //    Enabled_Mode();
-                //}
-                //catch (Exception ex)
-                //{
-                //    Disabled_Mode();
-                //}
-
-                Cursor.Current = Cursors.Default;
-
-            }
-            catch
-            { }
+            Disabled_Mode();
+            GetListCameraUSB();
+            Camera_ScreenShot_button.Visible = false;
         }
 
         private void Loadini()
@@ -122,14 +106,20 @@ namespace Camera_Record
             ftpPsw = Tools_CMD.IniReadValue("FTP_Option", "FTP_Password", "", iniPath);
 
             //Camera
-            try
-            {
-                //MININUM_DEVICES_CNT = Convert.ToInt16(Tools_CMD.IniReadValue("Camera Setting", "MININUM_DEVICES_CNT", "", iniPath));
-                imageHeight = Convert.ToInt16(Tools_CMD.IniReadValue("Camera Setting", "ImageHeight", "", iniPath));
-                imageWidth = Convert.ToInt16(Tools_CMD.IniReadValue("Camera Setting", "ImageWidth", "", iniPath));
-            }
-            catch
-            { }
+
+            //MININUM_DEVICES_CNT = Convert.ToInt16(Tools_CMD.IniReadValue("Camera Setting", "MININUM_DEVICES_CNT", "", iniPath));
+            imageHeight = ToNullableInt(Tools_CMD.IniReadValue("Camera Setting", "ImageHeight", "", iniPath));
+            imageWidth = ToNullableInt(Tools_CMD.IniReadValue("Camera Setting", "ImageWidth", "", iniPath));
+
+            var focusSetting = Tools_CMD.IniReadValue("Camera Setting", "FocusValue", "", iniPath);
+            this.focusValue = ToNullableInt(focusSetting);
+        }
+
+        public static int? ToNullableInt(string s)
+        {
+            int i;
+            if (int.TryParse(s, out i)) return i;
+            return null;
         }
 
         #endregion
@@ -217,8 +207,7 @@ namespace Camera_Record
             }
 
             v.SnapshotResolution = v.VideoCapabilities[0]; //It selects the default size
-            int a = v.VideoCapabilities.Length;
-            for (int i = 0; i < v.VideoCapabilities.Length; i++)
+            for (int i = 0, len = v.VideoCapabilities.Length; i < len; i++)
             {
 
                 string _reSize = string.Empty;
@@ -235,8 +224,16 @@ namespace Camera_Record
             }
             v.VideoResolution = SelectResolution(v);
             SizeList.Text = imageWidth + "x" + imageHeight;
-            LogInfo.Text += "Open camera " + device.Name + "\r\n";
+            UpdateLogInfo("Open camera " + device.Name);
 
+            if (this.focusValue == null)
+            {
+                v.SetCameraProperty(CameraControlProperty.Focus, 200, CameraControlFlags.Auto);
+            }
+            else
+            {
+                v.SetCameraProperty(CameraControlProperty.Focus, (int)focusValue, CameraControlFlags.Manual);
+            }
             //v.SetVideoProperty(VideoProcAmpProperty.Brightness,brightnessValue,VideoProcAmpFlags.Manual);
             //v.SetCameraProperty(CameraControlProperty., zoomValue, CameraControlFlags.Manual);
             //v.SetCameraProperty(CameraControlProperty.Zoom, zoomValue, CameraControlFlags.Manual);
@@ -264,17 +261,16 @@ namespace Camera_Record
         public void UpdateCaptureSnapshotManifast(Bitmap image, int index)
         {
             string SSN = string.Empty;
-            LogInfo.Text = "";
+            ClearLogInfo();
             try
             {
                 System.Windows.Forms.PictureBox pictureBox = (System.Windows.Forms.PictureBox)this.Controls["pictureBox" + index];
-                //               needSnapshot = false;
 
                 do
                 {
                     Tools_CMD.InputBox("請刷入編號", "編號", false, ref SSN);
 
-                    if ("".Equals(SSN))
+                    if (isStationValid(SSN))
                     {
                         MessageBox.Show("編號規則不正確");
                     }
@@ -404,7 +400,7 @@ namespace Camera_Record
             this.opened_videoDevices.Clear();
             this.opened_videoPlayers.Clear();
 
-            LogInfo.Text += "Close all camera resources\r\n";
+            UpdateLogInfo("Close all camera resources");
         }
 
         #endregion
@@ -458,7 +454,7 @@ namespace Camera_Record
                 StartTimer();
                 Enabled_Mode();
             }
-            catch (Exception ex)
+            catch
             {
                 Disabled_Mode();
             }
@@ -482,7 +478,7 @@ namespace Camera_Record
         {
             if (e.KeyCode == Keys.Enter)
             {
-                if (sn_textBox.Text.Length >= snMinTextLengh)
+                if (isSnVaild(sn_textBox.Text))
                 {
                     sn_textBox.Enabled = false;
                     captureImg(sender, e);
@@ -593,20 +589,38 @@ namespace Camera_Record
                 UploadResult = Tools_CMD.UploadFile(nameCapture, pathFolder + nameCapture, ftpIp, ftpAccount, ftpPsw, progressBar1);
                 if (UploadResult == true)
                 {
-                    LogInfo.Text += nameCapture + "圖檔上傳完成\r\n";
+                    UpdateLogInfo(nameCapture + "圖檔上傳完成");
                     System.IO.File.Delete(pathFolder + nameCapture);
                     //pictureBox1.Image = null;
                 }
             }
             catch (Exception ex)
             {
-                LogInfo.Text += (ex.ToString());
+                UpdateLogInfo(ex.ToString());
             }
         }
 
 
         #endregion
 
+        private void ClearLogInfo()
+        {
+            LogInfo.Text = "";
+        }
 
+        private void UpdateLogInfo(string text)
+        {
+            LogInfo.Text += text + "\r\n";
+        }
+
+        private bool isSnVaild(string text)
+        {
+            return text.Length >= snMinTextLengh && regex.IsMatch(text);
+        }
+
+        private bool isStationValid(string text)
+        {
+            return !"".Equals(text) && regex.IsMatch(text);
+        }
     }
 }
