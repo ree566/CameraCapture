@@ -32,18 +32,15 @@ namespace Camera_Record
         private List<VideoSourcePlayer> opened_videoPlayers = new List<VideoSourcePlayer>();
         private ArrayList listCamera = new ArrayList();
         private string pathFolder = Application.StartupPath + @"\ImageCapture\";
-
         private Stopwatch stopWatch = null;
-        //private static bool needSnapshot = false;
         private BackgroundWorker bw = new BackgroundWorker();
-
         private static string _usbcamera;
 
         private readonly int DEVICES_CNT = 1;
 
         //Camera auto close settting
         private int cameraProcessTime = 0;
-        private readonly int maxCameraProcessTime = 3 * 60; //Close camera when opening after 3 hours
+        private readonly int maxCameraProcessTime = 1 * 60 * 60; //Close camera when opening after 3 hours
 
         private const int VM_NCLBUTTONDOWN = 0XA1;
         private const int HTCAPTION = 2;
@@ -70,7 +67,7 @@ namespace Camera_Record
         private int? imageWidth;
 
         private Tools_CMD tools_CMD = new Tools_CMD();
-
+        private Image reIMG = null;
         private int? focusValue;
 
         //private static object _thisLock = new object();
@@ -86,7 +83,7 @@ namespace Camera_Record
             //Show project version
             var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
             versionInfo.Text = String.Format("Application Version {0}", version);
-
+            
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -94,7 +91,7 @@ namespace Camera_Record
             Loadini();
             Disabled_Mode();
             GetListCameraUSB();
-            Camera_ScreenShot_button.Visible = false;
+            //  Camera_ScreenShot_button.Visible = false;
         }
 
         private void Loadini()
@@ -142,7 +139,6 @@ namespace Camera_Record
                 this.CloseCurrentVideoSource();
                 cameraProcessTime = 0;
                 this.timer1.Stop();
-                pictureBox1.Image = null;
             }
         }
 
@@ -261,24 +257,22 @@ namespace Camera_Record
         public void UpdateCaptureSnapshotManifast(Bitmap image, int index)
         {
             string SSN = string.Empty;
+            reIMG = null;
             ClearLogInfo();
             try
             {
-                System.Windows.Forms.PictureBox pictureBox = (System.Windows.Forms.PictureBox)this.Controls["pictureBox" + index];
-
+                //System.Windows.Forms.PictureBox pictureBox = (System.Windows.Forms.PictureBox)this.Controls["pictureBox" + index];
                 do
                 {
                     Tools_CMD.InputBox("請刷入編號", "編號", false, ref SSN);
 
-                    if (isStationValid(SSN))
+                    if (!isStationValid(SSN))
                     {
                         MessageBox.Show("編號規則不正確");
                     }
                 } while ("".Equals(SSN));
 
-                pictureBox.Image = image;
-                pictureBox.Update();
-
+                reIMG = image;
                 nameCapture = sn_textBox.Text + "_" + SSN + "_" +
                     DateTime.Now.ToString("yyyyMMddHHmmss") + ".jpeg";
 
@@ -286,14 +280,17 @@ namespace Camera_Record
                 {
                     Directory.CreateDirectory(pathFolder);
                 }
-                pictureBox.Image.Save(pathFolder + nameCapture, ImageFormat.Jpeg);
+                reIMG.Save(pathFolder + nameCapture, ImageFormat.Jpeg);
                 this.Image_upload.Dispose();
                 this.Image_upload.WorkerSupportsCancellation = true;
                 this.progressBar1.Value = 0;
                 Image_upload.RunWorkerAsync();
             }
 
-            catch { }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
         }
 
         #endregion
@@ -319,11 +316,11 @@ namespace Camera_Record
 
             listBox1.SelectedIndex = 0;
 
-            for (var i = 1; i <= DEVICES_CNT; i++)
+           /* for (var i = 1; i <= DEVICES_CNT; i++)
             {
                 System.Windows.Forms.PictureBox pictureBox = (System.Windows.Forms.PictureBox)this.Controls["pictureBox" + i];
-                pictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
-            }
+                //pictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
+            }*/
         }
 
         #endregion
@@ -517,12 +514,6 @@ namespace Camera_Record
             button1_Click(sender, e);
         }
 
-        private void button1_Click_1(object sender, EventArgs e)
-        {
-            pictureBox1.Image = null;
-            pictureBox1.Update();
-        }
-
         private void setting_button_Click(object sender, EventArgs e)
         {
             if (this.opened_videoDevices.Count != 0 && this.DEVICES_CNT == 1)
@@ -569,7 +560,7 @@ namespace Camera_Record
             Camera_Stop_button.Enabled = false;
             Camera_ScreenShot_button.Enabled = false;
             //listBox1.Enabled = false;
-            pictureBox1.Image = null;
+           // pictureBox1.Image = null;
         }
 
         #endregion
@@ -591,7 +582,6 @@ namespace Camera_Record
                 {
                     UpdateLogInfo(nameCapture + "圖檔上傳完成");
                     System.IO.File.Delete(pathFolder + nameCapture);
-                    //pictureBox1.Image = null;
                 }
             }
             catch (Exception ex)
@@ -621,6 +611,13 @@ namespace Camera_Record
         private bool isStationValid(string text)
         {
             return !"".Equals(text) && regex.IsMatch(text);
+        }
+
+        private void img_button_Click(object sender, EventArgs e)
+        {
+            Form imgform = new IMGBOX(reIMG);
+            imgform.ShowDialog();
+            imgform.Dispose();
         }
     }
 }

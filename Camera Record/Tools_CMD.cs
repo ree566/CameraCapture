@@ -259,7 +259,7 @@ namespace Camera_Record
             return true;
         }
         #endregion
-
+        
         public static bool UploadFile(string updatefilename, string file_Path, string IP, string user, string password, ProgressBar Bar1)
         {
             bool result = true;
