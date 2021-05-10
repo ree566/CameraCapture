@@ -19,6 +19,7 @@ using System.Globalization;
 using System.Net;
 using AForge.Controls;
 using System.Timers;
+using System.Xml;
 
 namespace Camera_Record
 {
@@ -62,6 +63,7 @@ namespace Camera_Record
         private string ftpPsw = string.Empty;
 
         private string nameCapture = string.Empty;
+        private string ftpPathFolder = string.Empty;
 
         private int? imageHeight;
         private int? imageWidth;
@@ -69,6 +71,13 @@ namespace Camera_Record
         private Tools_CMD tools_CMD = new Tools_CMD();
         private Image reIMG = null;
         private int? focusValue;
+
+        private string SSN;
+
+        private readonly string encryptKey = @"<RSAKeyValue>
+              <Modulus>1YH2PKyMSjX/1Giw+y3/aIqXfqHas9llRJMyJrx++5tylWFsmP/UH3DvuUKoteEnGZKLxyug0scZ12kRKyyXXq6cYenV6TpZ7Ai2Wnxc9pHMJXO26GIdtgFRy93wFnMni0QCZ43YRyJ+SOzW+VnyUMGWD/a43eQucW+uju2a5V8=</Modulus>
+              <Exponent>AQAB</Exponent>
+            </RSAKeyValue>";
 
         //private static object _thisLock = new object();
 
@@ -82,8 +91,8 @@ namespace Camera_Record
 
             //Show project version
             var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-            versionInfo.Text = String.Format("Application Version {0}", version);
-            
+            versionInfo.Text = String.Format("v{0}", version);
+
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -96,6 +105,7 @@ namespace Camera_Record
 
         private void Loadini()
         {
+
             //FTP
             ftpIp = Tools_CMD.IniReadValue("FTP_Option", "FTP_IP", "", iniPath);
             ftpPort = Tools_CMD.IniReadValue("FTP_Option", "FTP_Port", "", iniPath);
@@ -110,6 +120,21 @@ namespace Camera_Record
 
             var focusSetting = Tools_CMD.IniReadValue("Camera Setting", "FocusValue", "", iniPath);
             this.focusValue = ToNullableInt(focusSetting);
+
+            //Tuple<string, string> t = RSAService.GenerateRSAKeys();
+            //Tools_CMD.IniWriteValue("RSA Keys", "PublicKey", t.Item1, iniPath);
+            //Tools_CMD.IniWriteValue("RSA Keys", "PrivateKey", t.Item2, iniPath);
+
+            string publicKey = System.IO.File.ReadAllText(Application.StartupPath + @"\k1.xml"); 
+            string privateKey = System.IO.File.ReadAllText(Application.StartupPath + @"\k2.xml");
+
+            if(ftpPsw.Length <= 15)
+            {
+                ftpPsw = RSAService.Encrypt(publicKey, ftpPsw);
+                Tools_CMD.IniWriteValue("FTP_Option", "FTP_Password", ftpPsw, iniPath);
+            }
+
+            ftpPsw = RSAService.Decrypt(privateKey, ftpPsw);
         }
 
         public static int? ToNullableInt(string s)
@@ -256,25 +281,16 @@ namespace Camera_Record
 
         public void UpdateCaptureSnapshotManifast(Bitmap image, int index)
         {
-            string SSN = string.Empty;
             reIMG = null;
             ClearLogInfo();
             try
             {
                 //System.Windows.Forms.PictureBox pictureBox = (System.Windows.Forms.PictureBox)this.Controls["pictureBox" + index];
-                do
-                {
-                    Tools_CMD.InputBox("請刷入編號", "編號", false, ref SSN);
-
-                    if (!isStationValid(SSN))
-                    {
-                        MessageBox.Show("編號規則不正確");
-                    }
-                } while ("".Equals(SSN));
-
                 reIMG = image;
                 nameCapture = sn_textBox.Text + "_" + SSN + "_" +
                     DateTime.Now.ToString("yyyyMMddHHmmss") + ".jpeg";
+
+                ftpPathFolder = sn_textBox.Text + @"\";
 
                 if (!Directory.Exists(pathFolder))
                 {
@@ -316,11 +332,11 @@ namespace Camera_Record
 
             listBox1.SelectedIndex = 0;
 
-           /* for (var i = 1; i <= DEVICES_CNT; i++)
-            {
-                System.Windows.Forms.PictureBox pictureBox = (System.Windows.Forms.PictureBox)this.Controls["pictureBox" + i];
-                //pictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
-            }*/
+            /* for (var i = 1; i <= DEVICES_CNT; i++)
+             {
+                 System.Windows.Forms.PictureBox pictureBox = (System.Windows.Forms.PictureBox)this.Controls["pictureBox" + i];
+                 //pictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
+             }*/
         }
 
         #endregion
@@ -459,8 +475,25 @@ namespace Camera_Record
 
         private void button2_Click(object sender, EventArgs e)
         {
-            //needSnapshot = true;
+            if (!isSnVaild(sn_textBox.Text))
+            {
+                MessageBox.Show("SN規則不正確");
+                sn_textBox.Clear();
+                sn_textBox.Focus();
+                return;
+            }
 
+            SSN = string.Empty;
+
+            do
+            {
+                Tools_CMD.InputBox("請刷入編號", "編號", false, ref SSN);
+
+                if (!isStationValid(SSN))
+                {
+                    MessageBox.Show("編號規則不正確");
+                }
+            } while ("".Equals(SSN));
             captureImg(sender, e);
         }
 
@@ -475,20 +508,11 @@ namespace Camera_Record
         {
             if (e.KeyCode == Keys.Enter)
             {
-                if (isSnVaild(sn_textBox.Text))
-                {
-                    sn_textBox.Enabled = false;
-                    captureImg(sender, e);
-                    sn_textBox.Enabled = true;
-                    sn_textBox.Text = "";
-                    sn_textBox.Focus();
-                }
-                else
-                {
-                    MessageBox.Show("SN規則不正確");
-                    sn_textBox.Clear();
-                    sn_textBox.Focus();
-                }
+                sn_textBox.Enabled = false;
+                button2_Click(sender, e);
+                sn_textBox.Enabled = true;
+                sn_textBox.Text = "";
+                sn_textBox.Focus();
             }
         }
 
@@ -549,7 +573,8 @@ namespace Camera_Record
             Camera_Start_button.Enabled = false;
             Camera_Stop_button.Enabled = true;
             Camera_ScreenShot_button.Enabled = true;
-            //listBox1.Enabled = true;
+            OpenSetting.Enabled = true;
+            img_button.Enabled = true;
         }
 
         private void Disabled_Mode()
@@ -559,8 +584,8 @@ namespace Camera_Record
             Camera_Start_button.Enabled = true;
             Camera_Stop_button.Enabled = false;
             Camera_ScreenShot_button.Enabled = false;
-            //listBox1.Enabled = false;
-           // pictureBox1.Image = null;
+            OpenSetting.Enabled = false;
+            img_button.Enabled = false;
         }
 
         #endregion
@@ -577,7 +602,7 @@ namespace Camera_Record
             BackgroundWorker worker = (BackgroundWorker)sender;
             try
             {
-                UploadResult = Tools_CMD.UploadFile(nameCapture, pathFolder + nameCapture, ftpIp, ftpAccount, ftpPsw, progressBar1);
+                UploadResult = Tools_CMD.UploadFile(ftpPathFolder, nameCapture, pathFolder + nameCapture, ftpIp, ftpAccount, ftpPsw, progressBar1);
                 if (UploadResult == true)
                 {
                     UpdateLogInfo(nameCapture + "圖檔上傳完成");

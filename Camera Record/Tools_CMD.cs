@@ -259,15 +259,29 @@ namespace Camera_Record
             return true;
         }
         #endregion
-        
-        public static bool UploadFile(string updatefilename, string file_Path, string IP, string user, string password, ProgressBar Bar1)
+
+        public static bool UploadFile(string updatefilepath, string updatefilename, string file_Path, string IP, string user, string password, ProgressBar Bar1)
         {
             bool result = true;
             try
             {
                 FileInfo finfo = new FileInfo(file_Path);
                 updatefilename = Path.GetFileNameWithoutExtension(file_Path) + Path.GetExtension(file_Path);
-                FtpWebRequest request = (FtpWebRequest)WebRequest.Create(IP + "/" + updatefilename);
+
+                FtpWebRequest request;
+                try
+                {
+                    request = (FtpWebRequest)WebRequest.Create(IP + "/" + updatefilepath);
+                    request.Credentials = new NetworkCredential(user, password);
+                    request.Method = WebRequestMethods.Ftp.MakeDirectory;
+                    request.GetResponse();
+                }
+                catch 
+                {
+
+                }
+
+                request = (FtpWebRequest)WebRequest.Create(IP + "/" + updatefilepath + updatefilename);
                 request.Method = WebRequestMethods.Ftp.UploadFile;
                 request.UsePassive = false;
                 request.UseBinary = true;
